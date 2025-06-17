@@ -10,6 +10,13 @@ Color green = {173, 204, 96, 255};
 Color darkGreen = {42, 51, 24, 255};
 
 
+//Game states
+enum gameState{
+	titleScreen,
+	gameActive,
+	gameOver
+};
+
 //Grind config
 int cellSize = 30;
 int cellCount = 25;
@@ -44,6 +51,18 @@ public:
 	deque<Vector2> body = {Vector2{6, 9}, Vector2{5, 9}, Vector2{4, 9}};
 	Vector2 direction = {1, 0};
 	bool addSegment = false;
+	Vector2 nextDirection = {1, 0};
+	Texture2D headTexture;
+
+	Snake(){
+		Image image = LoadImage("Assets/snake_head.png");
+		headTexture = LoadTextureFromImage(image);
+		UnloadImage(image);
+	}
+
+	~Snake(){
+		UnloadTexture(headTexture);
+	}
 
 	void Draw(){
 		for(unsigned int i = 0; i<body.size(); i++){
@@ -52,10 +71,30 @@ public:
 			Rectangle segment = Rectangle{offset + x * cellSize, offset + y * cellSize, (float)cellSize, (float)cellSize};
 			DrawRectangleRounded(segment, 0.4, 6, darkGreen);
 		}
+
+		float snakeHeadx = body[0].x;
+		float snakeHeady = body[0].y;
+
+		float rotation = 0;
+		if (direction.x == 1) rotation = 90;    // Right
+		if (direction.x == -1) rotation = 270; // Left
+		if (direction.y == -1) rotation = 0; // Up
+		if (direction.y == 1) rotation = 180;   // Down
+		Rectangle dest = {offset + snakeHeadx * cellSize + cellSize/2, 
+                     offset + snakeHeady * cellSize + cellSize/2, 
+                     (float)cellSize, (float)cellSize};
+		Vector2 origin = {(float)cellSize/2, (float)cellSize/2};
+		DrawTexturePro(headTexture, 
+					Rectangle{0, 0, (float)headTexture.width, (float)headTexture.height},
+					dest, 
+					origin, 
+					rotation, 
+					WHITE);
 	}
 
 
 	void Update(){
+		direction = nextDirection;
 		body.push_front(Vector2Add(body[0], direction));
 		if(addSegment == true){
 			addSegment = false;
@@ -63,6 +102,14 @@ public:
 			body.pop_back();
 		}
 	}
+
+
+	//void ChangeDirection will prevent reversing Direction 
+	void ChangeDirection(Vector2 newDirection){
+		if(Vector2Length(Vector2Add(direction, newDirection)) !=0){
+			nextDirection = newDirection;
+		}
+	} 
 
 	void Reset(){
 		body = {Vector2{6, 9}, Vector2{5, 9}, Vector2{4, 9}};
@@ -111,21 +158,27 @@ public:
 
 class Game{
 	public:
+		gameState currentState = titleScreen;
 		Snake snake = Snake();
 		Food food = Food(snake.body);
 		//bool running is needed for the pause function
 		bool running = true;
 		int score = 0;
+		Music backgroundMusic;
 		Sound eatSound;
 		Sound gameOverSound;
 
 		Game(){
 			InitAudioDevice();
+			backgroundMusic = LoadMusicStream("Sounds/background_music.mp3");
+			SetMusicVolume(backgroundMusic, 0.5f);
+			PlayMusicStream(backgroundMusic);
 			eatSound = LoadSound("Sounds/apple_eating.mp3");
 			gameOverSound = LoadSound("Sounds/gameover.mp3");
 		}
 
 		~Game(){
+			UnloadMusicStream(backgroundMusic);
 			UnloadSound(eatSound);
 			UnloadSound(gameOverSound);
 			CloseAudioDevice();
@@ -144,6 +197,10 @@ class Game{
 				CheckCollisionWithTail();
 			}
 		};
+
+		void UpdateMusic(){
+			UpdateMusicStream(backgroundMusic);
+		}
 
 		void CheckCollisionWithFood(){
 			if(Vector2Equals(snake.body[0], food.position)){
@@ -180,6 +237,39 @@ class Game{
 			food.position = food.GenerateRandomPos(snake.body);
 			running = false;
 			score = 0;
+			currentState = titleScreen;
+		}
+
+		void DrawTitleScreen() {
+			// Title text
+			const char* titleText = "SNAKE GAME";
+			int titleFontSize = 50;
+			int titleWidth = MeasureText(titleText, titleFontSize);
+			DrawText(titleText, (GetScreenWidth() - titleWidth) / 2, offset + 100, titleFontSize, darkGreen);
+
+			// Start button
+			const char* buttonText = "START GAME";
+			int buttonFontSize = 30;
+			int buttonWidth = MeasureText(buttonText, buttonFontSize);
+			Rectangle buttonRect = {
+				(GetScreenWidth() - buttonWidth - 40) / 2.0f,
+				GetScreenHeight() / 2.0f,
+				(float)buttonWidth + 40,
+				50
+			};
+
+			// Check if mouse is over button
+			bool mouseOverButton = CheckCollisionPointRec(GetMousePosition(), buttonRect);
+
+			// Draw button (changes color when hovered)
+			DrawRectangleRec(buttonRect, mouseOverButton ? Color{100, 100, 100, 255} : darkGreen);
+			DrawRectangleLinesEx(buttonRect, 2, RAYWHITE);
+			DrawText(buttonText, (GetScreenWidth() - buttonWidth) / 2, GetScreenHeight() / 2 + 10, buttonFontSize, RAYWHITE);
+
+			// Instructions
+			const char* instrText = "Use arrow keys to move";
+			int instrWidth = MeasureText(instrText, 20);
+			DrawText(instrText, (GetScreenWidth() - instrWidth) / 2, GetScreenHeight() - 100, 20, darkGreen);
 		}
 
 };
@@ -200,40 +290,67 @@ int main(){
 	//Gameloop
 	while(WindowShouldClose() == false){
 		BeginDrawing();
-
-		if(eventTriggered(0.2) == true){
-			game.Update();
-		}
-
-		if(IsKeyPressed(KEY_UP) && game.snake.direction.y != 1){
-			game.snake.direction = {0, -1};
-			game.running = true; 
-
-		}
-		if(IsKeyPressed(KEY_DOWN) && game.snake.direction.y != -1){
-			game.snake.direction = {0, 1};
-			game.running = true; 
-
-		}
-		if(IsKeyPressed(KEY_LEFT) && game.snake.direction.x != 1){
-			game.snake.direction = {-1, 0};
-			game.running = true; 
-		}
-		if(IsKeyPressed(KEY_RIGHT) && game.snake.direction.x != -1){
-			game.snake.direction = {1, 0};
-			game.running = true;
-		}
-		if(IsKeyPressed(KEY_R)){
-			game.running = true;
-		}
-		
-		
-		//Drawing
 		ClearBackground(green);
-		DrawRectangleLinesEx(Rectangle{(float)offset-5, (float)offset-5, (float)width_height+10, (float)width_height+10}, 5, darkGreen);
-		game.Draw();
-		DrawText("C++ Snake", offset, 20, 40, darkGreen);
-		DrawText(TextFormat("Score : %i",game.score), cellCount*cellSize-2*offset , 20, 40, darkGreen);
+		game.UpdateMusic();
+
+		switch(game.currentState){
+			case titleScreen:
+				game.DrawTitleScreen();
+
+				//Click checker
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+					Vector2 mousePos = GetMousePosition();
+					Rectangle buttonRect = {
+						(GetScreenWidth() - 180) / 2.0f,
+						GetScreenHeight() / 2.0f,
+						180,
+						50
+                	};
+                
+					if (CheckCollisionPointRec(mousePos, buttonRect)) {
+						game.currentState = gameActive;
+					}
+            	}
+            
+				// Also allow starting with Enter key
+				if (IsKeyPressed(KEY_ENTER)) {
+					game.currentState = gameActive;
+				}
+
+				break;
+			case gameActive:
+				if(eventTriggered(0.2) == true){
+					game.Update();
+				}
+
+				if(IsKeyPressed(KEY_UP) && game.snake.direction.y != 1){
+					game.snake.ChangeDirection({0, -1});
+					game.running = true; 
+				}
+				if(IsKeyPressed(KEY_DOWN) && game.snake.direction.y != -1){
+					game.snake.ChangeDirection({0, 1});
+					game.running = true; 
+				}
+				if(IsKeyPressed(KEY_LEFT) && game.snake.direction.x != 1){
+					game.snake.ChangeDirection({-1, 0});
+					game.running = true; 
+				}
+				if(IsKeyPressed(KEY_RIGHT) && game.snake.direction.x != -1){
+					game.snake.ChangeDirection({1, 0});
+					game.running = true;
+				}
+				if(IsKeyPressed(KEY_R)){
+					game.running = true;
+				}
+				//Drawing
+				DrawRectangleLinesEx(Rectangle{(float)offset-5, (float)offset-5, (float)width_height+10, (float)width_height+10}, 5, darkGreen);
+				game.Draw();
+				DrawText("C++ Snake", offset, 20, 40, darkGreen);
+				DrawText(TextFormat("Score : %i",game.score), cellCount*cellSize-2*offset , 20, 40, darkGreen);
+
+				break;
+		}
+		
 		EndDrawing();
 	}
 	
