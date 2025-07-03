@@ -36,6 +36,21 @@ I used this tutorial as a starting point and built upon it to create my own vers
 - **C++ compiler** (e.g., g++, clang++)
 - **raylib library** installed on your system
 
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/bameninhong/FlappyBirdCopy.git
+   ```
+   ```bash
+   git clone git@github.com:bameninhong/FlappyBirdCopy.git
+   ```
+
 ### 🔨 Build (example using g++)
 ```bash
-g++ main.cpp -o snake -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+g++ main.cpp -o main
+```
+
+### ▶️ Run
+```bash
+./main
+```
