@@ -39,10 +39,10 @@ I used this tutorial as a starting point and built upon it to create my own vers
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/bameninhong/FlappyBirdCopy.git
+   git clone https://github.com/bameninhong/SnakeInCpluplus.git
    ```
    ```bash
-   git clone git@github.com:bameninhong/FlappyBirdCopy.git
+   git clone git@github.com:bameninhong/SnakeInCpluplus.git
    ```
 
 ### 🔨 Build (example using g++)
